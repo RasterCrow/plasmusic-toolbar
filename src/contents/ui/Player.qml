@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQml.Models 2.3
 import org.kde.plasma.private.mpris as Mpris
 
-QtObject {
+Item {
     id: root
 
     property var mpris2Model: Mpris.Mpris2Model {
@@ -12,6 +12,20 @@ QtObject {
         onRowsInserted: () => updatePlayerIndex(this)
         onRowsRemoved: () => updatePlayerIndex(this)
         onPreferredSourceIdentitiesChanged: () => updatePlayerIndex(this)
+
+        onCurrentPlayerChanged: {
+            if (!currentPlayer) {
+                root._cachedArtUrl = "";
+                root._cachedArtKey = "";
+                root._waitingForNewArt = false;
+                artGraceTimer.stop();
+                return;
+            }
+
+            if (root.sourceIsAllowed(currentPlayer.identity)) {
+                root.updateCachedArtForCurrentPlayer();
+            }
+        }
 
         function updatePlayerIndex(model) {
             if (!preferredSourceIdentities) {
@@ -103,11 +117,56 @@ QtObject {
     }
 
     property var sourceIdentities: null
+
+    // Album art cache
+    property string _cachedArtUrl: ""
+    property string _cachedArtKey: ""
+    property bool _waitingForNewArt: false
+
+    Timer {
+        id: artGraceTimer
+        interval: 800
+        repeat: false
+
+        onTriggered: {
+            root._waitingForNewArt = false;
+            const key = root.mediaKey(mpris2Model.currentPlayer);
+            if (!mpris2Model.currentPlayer?.artUrl && root._cachedArtKey !== key) {
+                root._cachedArtUrl = "";
+                root._cachedArtKey = "";
+            }
+        }
+    }
+
+    Connections {
+        target: mpris2Model.currentPlayer
+
+        function startWaitingForArt() {
+            root.updateCachedArtForCurrentPlayer();
+        }
+
+        function onTrackChanged() {
+            startWaitingForArt();
+        }
+
+        function onArtistChanged() {
+            startWaitingForArt();
+        }
+
+        function onAlbumChanged() {
+            startWaitingForArt();
+        }
+
+        function onArtUrlChanged() {
+            root.updateCachedArtForCurrentPlayer();
+        }
+    }
+
     readonly property bool ready: {
         if (!mpris2Model.currentPlayer) {
             return false;
         }
-        if (sourceIdentities && !sourceIdentities.includes(mpris2Model.currentPlayer.identity)) {
+        if (!sourceIsAllowed(mpris2Model.currentPlayer.identity)) {
             return false;
         }
         // Chromium-based browsers stay registered on MPRIS even after the media tab
@@ -123,7 +182,10 @@ QtObject {
     readonly property string album: ready ? mpris2Model.currentPlayer.album : ""
     readonly property int playbackStatus: ready ? mpris2Model.currentPlayer.playbackStatus : Mpris.PlaybackStatus.Unknown
     readonly property int shuffle: ready ? mpris2Model.currentPlayer.shuffle : Mpris.ShuffleStatus.Unknown
-    readonly property string artUrl: ready ? mpris2Model.currentPlayer.artUrl : ""
+
+    // Cached art URL instead of direct binding
+    readonly property string artUrl: ready ? _cachedArtUrl : ""
+
     readonly property int loopStatus: ready ? mpris2Model.currentPlayer.loopStatus : Mpris.LoopStatus.Unknown
     readonly property double songPosition: ready ? mpris2Model.currentPlayer.position : 0
     readonly property double songLength: ready ? mpris2Model.currentPlayer.length : 0
@@ -142,6 +204,49 @@ QtObject {
     // CanPause, CanSeek, etc.
     readonly property bool canChangeShuffle: ready ? mpris2Model.currentPlayer.shuffle != undefined : false
     readonly property bool canChangeLoopStatus: ready ? mpris2Model.currentPlayer.loopStatus != undefined : false
+
+    function sourceIsAllowed(identity) {
+        return !sourceIdentities || sourceIdentities.includes(identity);
+    }
+
+    function mediaKey(player) {
+        if (!player) {
+            return "";
+        }
+
+        return [player.identity, player.track, player.artist, player.album].join("\u001f");
+    }
+
+    function updateCachedArtForCurrentPlayer() {
+        const currentPlayer = mpris2Model.currentPlayer;
+        if (!currentPlayer) {
+            _cachedArtUrl = "";
+            _cachedArtKey = "";
+            _waitingForNewArt = false;
+            artGraceTimer.stop();
+            return;
+        }
+
+        const key = mediaKey(currentPlayer);
+        const url = currentPlayer.artUrl;
+
+        if (url) {
+            _cachedArtUrl = url;
+            _cachedArtKey = key;
+            _waitingForNewArt = false;
+            artGraceTimer.stop();
+            return;
+        }
+
+        if (_cachedArtKey === key) {
+            _waitingForNewArt = false;
+            artGraceTimer.stop();
+            return;
+        }
+
+        _waitingForNewArt = true;
+        artGraceTimer.restart();
+    }
 
     function playPause() {
         mpris2Model.currentPlayer?.PlayPause();
