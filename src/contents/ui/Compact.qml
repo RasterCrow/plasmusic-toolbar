@@ -14,11 +14,20 @@ Item {
 
     readonly property bool horizontal: widget.formFactor === PlasmaCore.Types.Horizontal
     readonly property bool fillAvailableSpace: plasmoid.configuration.fillAvailableSpace
+    readonly property int visibleControlCount: (plasmoid.configuration.skipBackwardControlInPanel ? 1 : 0)
+        + (plasmoid.configuration.playPauseControlInPanel ? 1 : 0)
+        + (plasmoid.configuration.skipForwardControlInPanel ? 1 : 0)
+    readonly property int controlsLength: visibleControlCount * controlsSize
+        + Math.max(0, visibleControlCount - 1) * (spaceBetweenControlsInPanel ? Kirigami.Units.smallSpacing : 0)
+    readonly property int minimumContentLength: (plasmoid.configuration.iconInPanel ? iconSize : 0)
+        + controlsLength
+        + Math.max(0, (plasmoid.configuration.iconInPanel ? 1 : 0) + (visibleControlCount > 0 ? 1 : 0) - 1) * Kirigami.Units.smallSpacing
+        + lengthMargin * 2
 
     Layout.preferredWidth: horizontal ? grid.implicitWidth + lengthMargin * 2 : grid.implicitWidth
     Layout.preferredHeight: !horizontal ? grid.implicitHeight + lengthMargin * 2 : grid.implicitHeight
-    Layout.minimumWidth: Layout.preferredWidth
-    Layout.minimumHeight: Layout.preferredHeight
+    Layout.minimumWidth: horizontal && fillAvailableSpace ? minimumContentLength : Layout.preferredWidth
+    Layout.minimumHeight: !horizontal && fillAvailableSpace ? minimumContentLength : Layout.preferredHeight
     Layout.fillHeight: horizontal || fillAvailableSpace
     Layout.fillWidth: !horizontal || fillAvailableSpace
 
@@ -52,13 +61,18 @@ Item {
     }
 
     Rectangle {
+        id: background
+
         anchors.fill: parent
         color: backgroundColor
+
         Item {
             width: horizontal ? parent.width : parent.width
             height: horizontal ? parent.height : parent.height
+
             Rectangle {
                 id: progress
+
                 color: foregroundColor
                 height: horizontal ? parent.height : parent.height * (player.songPosition / player.songLength)
                 width: horizontal ? parent.width * (player.songPosition / player.songLength) : parent.width
@@ -66,15 +80,17 @@ Item {
                 opacity: player.playbackStatus === Mpris.PlaybackStatus.Playing ? 0.15 : 0.07
             }
         }
-    }
-    layer.enabled: compact.panelBackgroundRadius > 0 && (!Qt.colorEqual(backgroundColor, "transparent") || plasmoid.configuration.mediaProgressInPanel)
-    layer.effect: OpacityMask {
-        maskSource: Item {
-            width: compact.width
-            height: compact.height
-            Rectangle {
-                anchors.fill: parent
-                radius: compact.panelBackgroundRadius
+
+        layer.enabled: compact.panelBackgroundRadius > 0 && (!Qt.colorEqual(backgroundColor, "transparent") || plasmoid.configuration.mediaProgressInPanel)
+        layer.effect: OpacityMask {
+            maskSource: Item {
+                width: background.width
+                height: background.height
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: compact.panelBackgroundRadius
+                }
             }
         }
     }
@@ -184,8 +200,8 @@ Item {
             Item {
                 Layout.fillHeight: horizontal
                 Layout.fillWidth: !horizontal
-                Layout.preferredHeight: !horizontal ? songAndArtistText.width : null
-                Layout.preferredWidth: horizontal ? songAndArtistText.width : null
+                Layout.preferredHeight: !horizontal ? (songGrid.useFixedWidth ? songGrid.fxdWidth : songAndArtistText.width) : null
+                Layout.preferredWidth: horizontal ? (songGrid.useFixedWidth ? songGrid.fxdWidth : songAndArtistText.width) : null
 
                 SongAndArtistText {
                     id: songAndArtistText
@@ -198,7 +214,10 @@ Item {
                     }
 
                     maxWidth: {
-                        if (fillAvailableSpace || songGrid.useFixedWidth) {
+                        if (songGrid.useFixedWidth) {
+                            return songGrid.fxdWidth
+                        }
+                        if (fillAvailableSpace) {
                             return songGrid.length
                         }
                         return plasmoid.configuration.maxSongWidthInPanel

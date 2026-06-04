@@ -323,7 +323,7 @@ KCM.SimpleKCM {
 
         CheckBox {
             id: useSongTextFixedWidth
-            enabled: songTextInPanel.checked && fillAvailableSpaceCheckbox
+            enabled: songTextInPanel.checked
             Kirigami.FormData.label: i18n("Use fixed width")
         }
 
@@ -332,7 +332,7 @@ KCM.SimpleKCM {
             from: 0
             to: 1000
             Kirigami.FormData.label: i18n("fixed width:")
-            enabled: useSongTextFixedWidth.checked && songTextInPanel.checked && fillAvailableSpaceCheckbox
+            enabled: useSongTextFixedWidth.checked && songTextInPanel.checked
         }
 
         SpinBox {
@@ -340,7 +340,7 @@ KCM.SimpleKCM {
             from: 0
             to: 1000
             Kirigami.FormData.label: i18n("max width:")
-            enabled: !useSongTextFixedWidth.checked && songTextInPanel.checked && fillAvailableSpaceCheckbox
+            enabled: !useSongTextFixedWidth.checked && songTextInPanel.checked && !fillAvailableSpaceCheckbox.checked
         }
 
         Item {
