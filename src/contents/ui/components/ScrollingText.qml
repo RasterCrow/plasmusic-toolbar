@@ -80,6 +80,12 @@ Item {
         elideWidth: root.maxWidth
     }
 
+    TextMetrics {
+        id: scrollingMetrics
+        font: label.font
+        text: root.textAndSpacing
+    }
+
     // Static label for non-overflowing text, supports horizontal alignment.
     // Hidden when text overflows, where the scrolling label takes over instead.
     PlasmaComponents3.Label {
@@ -95,7 +101,7 @@ Item {
     PlasmaComponents3.Label {
         id: label
         visible: overflow
-        text: overflow ? (root.overflowElides && !animationRunning ? elidedMetrics.elidedText : root.textAndSpacing) : root.text
+        text: root.textAndSpacing
         color: root.textColor
         property bool animationRunning: label.x !== 0 || (!animation.paused && animation.running)
 
@@ -104,7 +110,7 @@ Item {
             running: root.overflow && root.scrollingEnabled
             paused: root.pauseScrolling && running
             from: 0
-            to: -label.implicitWidth
+            to: -scrollingMetrics.width
             duration: root.duration
             loops: Animation.Infinite
 
