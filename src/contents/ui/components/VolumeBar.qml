@@ -6,11 +6,13 @@ import org.kde.kirigami as Kirigami
 Item {
     id: container
     property real volume: 0.5;
+    property real displayedVolume: volume;
+    property real step: 0.05;
     property real size: 3;
     property real iconSize: Kirigami.Units.iconSizes.small;
     readonly property real minVolume: 0.0;
     readonly property real maxVolume: 1.0;
-    readonly property real clampedVolume: clampVolume(volume);
+    readonly property real clampedVolume: clampVolume(displayedVolume);
 
     signal setVolume(newVolume: real)
     signal volumeUp()
@@ -18,6 +20,19 @@ Item {
 
     function clampVolume(value) {
         return Math.max(minVolume, Math.min(maxVolume, value));
+    }
+
+    function requestVolume(value) {
+        displayedVolume = clampVolume(value);
+        setVolume(displayedVolume);
+    }
+
+    function requestVolumeDelta(delta) {
+        displayedVolume = clampVolume(displayedVolume + delta);
+    }
+
+    onVolumeChanged: {
+        displayedVolume = volume;
     }
 
     Layout.fillWidth: true
@@ -30,7 +45,10 @@ Item {
         CommandIcon {
             size: iconSize;
             onClicked: () => {
-                if (container.volume > container.minVolume) container.volumeDown();
+                if (container.displayedVolume > container.minVolume) {
+                    container.requestVolumeDelta(-container.step);
+                    container.volumeDown();
+                }
             }
             source: 'audio-volume-low';
         }
@@ -42,16 +60,22 @@ Item {
                 width: parent.width
                 cursorShape: Qt.PointingHandCursor
                 onClicked: (mouse) => {
-                    container.setVolume(container.clampVolume(mouse.x / parent.width))
+                    container.requestVolume(mouse.x / parent.width)
                 }
                 onPositionChanged: (mouse) => {
-                    if (pressed) container.setVolume(container.clampVolume(mouse.x / parent.width));
+                    if (pressed) container.requestVolume(mouse.x / parent.width);
                 }
                 onWheelUp: () => {
-                    if (container.volume < container.maxVolume) container.volumeUp();
+                    if (container.displayedVolume < container.maxVolume) {
+                        container.requestVolumeDelta(container.step);
+                        container.volumeUp();
+                    }
                 }
                 onWheelDown: () => {
-                    if (container.volume > container.minVolume) container.volumeDown();
+                    if (container.displayedVolume > container.minVolume) {
+                        container.requestVolumeDelta(-container.step);
+                        container.volumeDown();
+                    }
                 }
             }
 
@@ -71,7 +95,10 @@ Item {
         CommandIcon {
             size: iconSize;
             onClicked: () => {
-                if (container.volume < container.maxVolume) container.volumeUp();
+                if (container.displayedVolume < container.maxVolume) {
+                    container.requestVolumeDelta(container.step);
+                    container.volumeUp();
+                }
             }
             source: 'audio-volume-high';
         }
