@@ -34,10 +34,16 @@ Item {
 
         PlasmaComponents3.Slider {
             id: timeTrackSlider
-
+            
             Layout.fillWidth: true
             value: container.songPosition / container.songLength
             property bool changingPosition: false
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                cursorShape: timeTrackSlider.enabled && container.songLength > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+            }
 
             onPressedChanged: () => {
                 if (!pressed) {

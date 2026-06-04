@@ -17,13 +17,13 @@ ColumnLayout {
         UnderProgressBar
     }
 
-    property var maxWidth: undefined
-    property var scrollingBehaviour: undefined
-    property var scrollingSpeed: undefined
-    property var scrollingResetOnPause: undefined
-    property var scrollingEnabled: undefined
-    property var forcePauseScrolling: undefined
-    property var truncateStyle: undefined
+    property real maxWidth: 200
+    property int scrollingBehaviour: ScrollingText.OverflowBehaviour.AlwaysScroll
+    property int scrollingSpeed: 5
+    property bool scrollingResetOnPause: false
+    property bool scrollingEnabled: true
+    property bool forcePauseScrolling: false
+    property int truncateStyle: ScrollingText.TruncateStyle.None
 
     property string noMediaText: plasmoid.configuration.noMediaText
 
@@ -31,7 +31,7 @@ ColumnLayout {
     property int artistsPosition: SongAndArtistText.TextPosition.FirstLine
     property int albumPosition: SongAndArtistText.TextPosition.Hidden
 
-    property bool hideAlbumForSingles
+    property bool hideAlbumForSingles: false
     property bool showAlbum: !hideAlbumForSingles || (root.album != root.title)
     
     property font textFont: Kirigami.Theme.defaultFont
